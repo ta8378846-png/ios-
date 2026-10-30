@@ -1,0 +1,10 @@
+{
+  "name": "ChroniclePad - 每日历史重大事件与宏观财经备忘录 (iPad版)",
+  "description": "专为 iPad 打造的每日重大事件简报与历史回溯插件，聚焦股市、金融、科技与政治脉搏。支持一键导入 Apple 备忘录、导出推特分享卡片、离线查看与自定义定时推送提醒。",
+  "requestFramePermissions": [
+    "notifications"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

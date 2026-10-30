@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "ChroniclePad - 每日历史重大事件备忘录",
+  "short_name": "ChroniclePad",
+  "description": "iPad每日重大事件与历史脉搏，支持股市、金融、科技、政治四维扫描，无缝导入苹果备忘录与推特分享。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
