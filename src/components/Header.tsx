@@ -49,10 +49,20 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleWidgetPreview,
   savedCount,
 }) => {
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const getLocalDateStr = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const localToday = getLocalDateStr();
 
   const presetDates = [
-    { label: '今天', date: todayStr },
+    { label: '今日头条 (11月1日)', date: '2026-11-01' },
+    { label: '实时要闻 (11月2日)', date: '2026-11-02' },
+    { label: '前日快讯 (10月31日)', date: '2026-10-31' },
     { label: '1929 黑色大崩盘', date: '1929-10-29' },
     { label: '2008 雷曼破产', date: '2008-09-15' },
     { label: '1971 黄金脱钩', date: '1971-08-15' },
@@ -211,11 +221,12 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onRefresh}
               disabled={isLoading}
-              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 transition disabled:opacity-50 cursor-pointer shadow-xs"
-              title="重新获取最新事件"
+              className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition disabled:opacity-50 cursor-pointer shadow-xs flex items-center gap-1.5 text-xs font-semibold"
+              title="强制向服务器实时获取最新重大事件与权威信源"
               aria-label="刷新事件"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-indigo-600' : ''}`} />
+              <span>{isLoading ? '正在获取...' : '刷新更新'}</span>
             </button>
           </div>
 
@@ -225,7 +236,13 @@ export const Header: React.FC<HeaderProps> = ({
             {presetDates.map((item) => (
               <button
                 key={item.date}
-                onClick={() => onDateChange(item.date)}
+                onClick={() => {
+                  if (selectedDate === item.date) {
+                    onRefresh();
+                  } else {
+                    onDateChange(item.date);
+                  }
+                }}
                 className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition cursor-pointer ${
                   selectedDate === item.date
                     ? 'bg-indigo-600 text-white shadow-xs'

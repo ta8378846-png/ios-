@@ -35,8 +35,13 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
   try {
     if (pathname === '/api/briefing') {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
       const date = (parsed.query.date as string) || new Date().toISOString().slice(0, 10);
-      const briefing = await fetchDailyBriefing(date);
+      const isForceRefresh = parsed.query.refresh === 'true' || parsed.query.force === 'true';
+      const briefing = await fetchDailyBriefing(date, isForceRefresh);
       sendJson(briefing);
       return true;
     }

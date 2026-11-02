@@ -44,11 +44,21 @@ import {
 import { playChimeSound, triggerNotification, getMinutesUntilNextReminder } from './utils/reminder';
 
 export default function App() {
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const getLocalDateStr = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayStr = getLocalDateStr();
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [briefing, setBriefing] = useState<DailyBriefing | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [refreshToast, setRefreshToast] = useState<string | null>(null);
+  const [justRefreshed, setJustRefreshed] = useState<boolean>(false);
 
   // Filters
   const [activeCategory, setActiveCategory] = useState<EventCategory | 'all'>('all');
@@ -90,39 +100,57 @@ export default function App() {
     };
   }, []);
 
-  // Fetch briefing on date change
-  const loadBriefing = async (date: string) => {
+  // Fetch briefing on date change or force refresh
+  const loadBriefing = async (date: string, force = false) => {
     setIsLoading(true);
 
-    // Check offline cache first
-    const cached = getCachedBriefing(date);
-    if (cached) {
-      setBriefing(cached);
+    // If not forcing, check offline cache first for instant render
+    if (!force) {
+      const cached = getCachedBriefing(date);
+      if (cached) {
+        setBriefing(cached);
+      }
     }
 
     try {
-      const res = await fetch(`/api/briefing?date=${encodeURIComponent(date)}`);
+      const queryUrl = force 
+        ? `/api/briefing?date=${encodeURIComponent(date)}&refresh=true&_t=${Date.now()}`
+        : `/api/briefing?date=${encodeURIComponent(date)}`;
+      
+      const res = await fetch(queryUrl, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
+
       if (res.ok) {
         const data: DailyBriefing = await res.json();
         setBriefing(data);
         cacheBriefing(data);
-      } else if (!cached) {
+        if (force) {
+          setJustRefreshed(true);
+          setTimeout(() => setJustRefreshed(false), 3800);
+          setRefreshToast(`✨ 已为您成功刷新 ${data.displayDate} 最新事件（更新于 ${data.updatedAt || '刚刚'}）`);
+          setTimeout(() => setRefreshToast(null), 3800);
+          try {
+            confetti({ particleCount: 26, spread: 60, origin: { y: 0.12 } });
+          } catch (e) {}
+        }
+      } else {
         throw new Error('Failed to fetch from server');
       }
     } catch (err) {
       console.warn('Network fetch error, falling back to cached:', err);
-      if (!cached) {
-        // If not even cached, attempt to load standard today fallback
-        const fallback = getCachedBriefing(todayStr);
-        if (fallback) setBriefing(fallback);
-      }
+      const fallback = getCachedBriefing(date) || getCachedBriefing(todayStr);
+      if (fallback) setBriefing(fallback);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadBriefing(selectedDate);
+    loadBriefing(selectedDate, false);
   }, [selectedDate]);
 
   // Push reminder interval check: pushes today's real breaking headline!
@@ -243,7 +271,7 @@ export default function App() {
         onDateChange={setSelectedDate}
         isOnline={isOnline}
         isLoading={isLoading}
-        onRefresh={() => loadBriefing(selectedDate)}
+        onRefresh={() => loadBriefing(selectedDate, true)}
         onOpenNotesModal={() => setIsNotesModalOpen(true)}
         onOpenTwitterModal={() => {
           setSelectedEventForShare(null);
@@ -266,6 +294,22 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* Refresh success banner */}
+        {refreshToast && (
+          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/90 text-emerald-900 text-xs font-semibold flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+              <span>{refreshToast}</span>
+            </div>
+            <button
+              onClick={() => setRefreshToast(null)}
+              className="text-emerald-700 hover:text-emerald-950 p-1 font-bold"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Offline notification bar if disconnected */}
         {!isOnline && (
           <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between text-xs text-amber-800 shadow-xs">
@@ -300,6 +344,12 @@ export default function App() {
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
                     更新于 {briefing.updatedAt}
                   </span>
+                  {justRefreshed && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping" />
+                      刚刚实时刷新
+                    </span>
+                  )}
                 </div>
 
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-snug">
